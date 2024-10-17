@@ -3,6 +3,10 @@ from typing import Callable, Optional
 import gymnasium as gym
 from gymnasium.envs.registration import register
 
+import ale_py
+
+gym.register_envs(ale_py)
+
 from rl_zoo3.wrappers import MaskVelocityWrapper
 
 try:
