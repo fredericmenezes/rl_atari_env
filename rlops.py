@@ -838,8 +838,8 @@ if __name__ == "__main__":
                 performance_profile_cis=score_distributions_cis,
                 colors=colors,
                 # xlabel=r"Normalized Score $(\tau)$",
-                xlabel=r"Pontuação Normalizada $(\tau)$",
-                ylabel=r"Fração de corridas com score > $\tau$",
+                xlabel=r"Score Normalizado $(\tau)$",
+                ylabel=r"Execucões com score > $\tau$",
                 ax=axes_performance_profile[0],
             )
             plot_utils.plot_performance_profiles(
@@ -848,9 +848,9 @@ if __name__ == "__main__":
                 performance_profile_cis=avg_score_distributions_cis,
                 colors=colors,
                 # xlabel=r"Normalized Score $(\tau)$",
-                xlabel=r"Pontuação Normalizada $(\tau)$",
+                xlabel=r"Score Normalizado $(\tau)$",
                 # ylabel=r"Fraction of tasks with score > $\tau$",
-                ylabel=r"Fração de tarefas com score > $\tau$",
+                ylabel=r"Tarefas com score > $\tau$",
                 ax=axes_performance_profile[1],
             )
             h, l = axes_performance_profile[0].get_legend_handles_labels()
@@ -887,7 +887,8 @@ if __name__ == "__main__":
                 # xlabel='Normalized Score',
                 # xlabel_y_coordinate=-0.08, # this variable needs to be adjusted for each plot... :( so we just disable xlabel for now.
             )
-            axes[1].set_xlabel("Normalized Score", fontsize="xx-large")
+            # axes[1].set_xlabel("Normalized Score", fontsize="xx-large")
+            axes[1].set_xlabel("Score Normalizado", fontsize="xx-large")
             fig.tight_layout()
             plt.savefig(f"{args.output_filename}_aggregate.png", bbox_inches="tight")
             plt.savefig(f"{args.output_filename}_aggregate.pdf", bbox_inches="tight")
