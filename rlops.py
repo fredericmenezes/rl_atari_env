@@ -21,12 +21,14 @@ from rich.console import Console
 from rich.pretty import pprint
 from rich.table import Table
 from rliable import library as rly
-from rliable import metrics, plot_utils
+from rliable import metrics
+import plot_utils
 
 import openrlbenchmark
 import openrlbenchmark.cache
 from openrlbenchmark.hns import atari_human_normalized_scores as atari_hns
 from openrlbenchmark.offline_db import OfflineRun, OfflineRunTag, Tag, database_proxy
+import sys
 
 
 def convert(values: Union[List[str], str]) -> Union[List[Any], Any]:
@@ -52,7 +54,8 @@ class RliableConfig:
     """if toggled, we will generate sample efficiency plots"""
     sample_efficiency_figsize: Tuple[float, float] = (7 * 2, 3.4 * 2)
     """figure size of the sample efficiency plots"""
-    sample_efficiency_and_walltime_efficiency_method: Optional[Literal["Median", "IQM", "Mean", "Optimality Gap"]] = "Median"
+    # sample_efficiency_and_walltime_efficiency_method: Optional[Literal["Median", "IQM", "Mean", "Optimality Gap"]] = "Median"
+    sample_efficiency_and_walltime_efficiency_method: Optional[Literal["Mediana", "IQM", "Média", "Gap de Otimalidade"]] = "Mediana"
     """the method to compute the sample efficiency and walltime efficiency"""
     performance_profile_plots: bool = True
     """if toggled, we will generate performance profile plots"""
@@ -78,7 +81,7 @@ class PlotConfig:
     xlabel: str = "Passos"
     """the label of the x-axis"""
     # ylabel: str = "Episodic Return"
-    ylabel: str = "Recompensa por Episódio"
+    ylabel: str = "Recompensa por Epsódio"
     """the label of the y-axis"""
     sharex: bool = False
     """if toggled, we will share the x-axis across all subplots"""
@@ -206,7 +209,7 @@ class Runset:
     @property
     def runs(self):
         if not self.offline:
-            return wandb.Api().runs(
+            return wandb.Api(timeout=59).runs(
                 path=f"{self.entity}/{self.project}",
                 filters=self.wandb_filters,
             )
@@ -254,12 +257,14 @@ def print_rich_table(title: str, df: pd.DataFrame, console: Console) -> Table:
 def create_hypothesis(runset: Runset, scan_history: bool = False) -> Hypothesis:
     runs = []
     for idx, run in enumerate(runset.runs):
-        print("loading", run, run.url)
+        # print("loading", run, run.url)
+        print("carregando", run, run.url)
         if run.state == "running":
             print(f"Skipping running run: {run}")
             continue
         if scan_history:
-            run = openrlbenchmark.cache.CachedRun(run, cache_dir=os.path.join(openrlbenchmark.__path__[0], "dataset"))
+            # run = openrlbenchmark.cache.CachedRun(run, cache_dir=os.path.join(openrlbenchmark.__path__[0], "dataset"))
+            run = openrlbenchmark.cache.CachedRun(run, cache_dir=os.path.join(os.path.dirname(__file__), "dataset"))
             with runset.offline_db.bind_ctx([OfflineRun, OfflineRunTag, Tag]):
                 tags = []
                 for tag_str in run.run.tags:
@@ -324,7 +329,7 @@ def compare(
                 # title_x="Steps",
                 title_x="Passos",
                 # title_y="Episodic Return",
-                title_y="Retorno por Episódio",
+                title_y="Recompensa por Episódio",
                 max_runs_to_show=100,
                 smoothing_factor=0.8,
                 groupby_rangefunc="stderr",
@@ -336,7 +341,7 @@ def compare(
                 y=list({runsets[idx].metric for runsets in runsetss}),
                 title=env_id,
                 # title_y="Episodic Return",
-                title_y="Retorno por Episódio",
+                title_y="Recompensa por Epsódio",
                 max_runs_to_show=100,
                 smoothing_factor=0.8,
                 groupby_rangefunc="stderr",
@@ -393,7 +398,8 @@ def compare(
     runtimes = []
     global_steps = []
     for idx, env_id in enumerate(env_ids):
-        print(f"collecting runs for {env_id}")
+        # print(f"collecting runs for {env_id}")
+        print(f"coletando execuções para {env_id}")
         hypotheses = [create_hypothesis(runsets[idx], scan_history) for runsets in runsetss]
         ex = expt.Experiment("Comparison", hypotheses)
         exs.append(ex)
@@ -403,7 +409,8 @@ def compare(
         result = []
         for hypothesis in ex.hypotheses:
             metric_result = []
-            console.print(f"{hypothesis.name} has {len(hypothesis.runs)} runs", style="bold")
+            # console.print(f"{hypothesis.name} has {len(hypothesis.runs)} runs", style="bold")
+            console.print(f"{hypothesis.name} tem {len(hypothesis.runs)} execuções", style="bold")
             for run in hypothesis.runs:
                 metric_result += [run.df["charts/episodic_return"].dropna()[-metric_last_n_average_window:].mean()]
 
@@ -531,6 +538,29 @@ def atari_normalize_score(score_dict, original_env_ids):
 
 
 if __name__ == "__main__":
+    # sys.argv = ["rlops.py",
+    # "--filters", "?we=lacmor&wpn=pibic-em&ceik=env&cen=algo&metric=rollout/ep_rew_mean",
+    #     "ppo?tag=v2.4.0a7&seed=1&seed=2&seed=3&cl=PPO",
+    # "--filters", "?we=lacmor&wpn=pibic-em&ceik=env&cen=algo&metric=rollout/ep_rew_mean",
+    #     "dqn?tag=v2.4.0a7&seed=1&seed=2&seed=3&cl=DQN",
+    # "--env-ids", "ALE/Breakout-v5", "ALE/Pong-v5", "ALE/Enduro-v5",
+    # "--env-ids", "ALE/Breakout-v5", "ALE/Pong-v5", "ALE/Enduro-v5",
+    # "--no-check-empty-runs",
+    # "--pc.ncols", "3",
+    # "--pc.ncols-legend", "3",
+    # "--rliable",
+    # "--rc.score_normalization_method", "maxmin",
+    # "--rc.normalized_score_threshold", "1.0",
+    # "--rc.sample_efficiency_plots",
+    # "--rc.sample_efficiency_and_walltime_efficiency_method", "Mediana",
+    # "--rc.performance_profile_plots",
+    # "--rc.aggregate_metrics_plots",
+    # "--rc.sample_efficiency_num_bootstrap_reps", "10",
+    # "--rc.performance_profile_num_bootstrap_reps", "10",
+    # "--rc.interval_estimates_num_bootstrap_reps", "10",
+    # "--output-filename", "static/0compare",
+    # "--scan-history"
+    # ]
     args = tyro.cli(Args)
     # by default assume all the env_ids are the same
     if len(args.filters) > 1 and len(args.env_ids) == 1:
@@ -571,7 +601,8 @@ if __name__ == "__main__":
             expand_all=True,
         )
         if f"{wandb_entity}/{wandb_project_name}" not in offline_dbs:
-            offline_db_folder = os.path.join(openrlbenchmark.__path__[0], "dataset", f"{wandb_entity}/{wandb_project_name}")
+            # offline_db_folder = os.path.join(openrlbenchmark.__path__[0], "dataset", f"{wandb_entity}/{wandb_project_name}")
+            offline_db_folder = os.path.join(os.path.dirname(__file__), "dataset", f"{wandb_entity}/{wandb_project_name}")
             offline_db_path = os.path.join(offline_db_folder, "offline.sqlite")
             print(offline_db_path)
             os.makedirs(offline_db_folder, exist_ok=True)
@@ -659,7 +690,8 @@ if __name__ == "__main__":
             # for each seed
             for seed_idx, _ in enumerate(range(min_num_seeds_per_hypothesis[runsets[0].name])):  # exs[0][runsets_idx]
                 min_global_step = float("inf")
-                print(f"collecting runs for {runsets[0].name} seed {seed_idx}")
+                # print(f"collecting runs for {runsets[0].name} seed {seed_idx}")
+                print(f"coletando execuções para {runsets[0].name} seed {seed_idx}")
 
                 runs_of_one_seed = []
                 for ex_idx, ex in enumerate(exs):
@@ -709,7 +741,7 @@ if __name__ == "__main__":
             metrics.aggregate_optimality_gap,
         ]
         # metric_names = ["Median", "IQM", "Mean", "Optimality Gap"]
-        metric_names = ["Mediana", "Mediana Interquartil (IQM)", "Média", "GAP de Otimalidade"]
+        metric_names = ["Mediana", "IQM", "Média", "Gap de Otimalidade"]
 
         if args.rc.sample_efficiency_plots:
             print("plotting sample efficiency curve (this is slow and may take several minutes)")
@@ -742,6 +774,7 @@ if __name__ == "__main__":
                     )
                 ax.set_xlabel("")
                 expt.plot.autoformat_xaxis(ax)
+
 
                 if metric_name == args.rc.sample_efficiency_and_walltime_efficiency_method:
                     fig_median_sample_walltime_efficiency, axes_median_sample_walltime_efficiency = plt.subplots(
@@ -839,7 +872,7 @@ if __name__ == "__main__":
                 colors=colors,
                 # xlabel=r"Normalized Score $(\tau)$",
                 xlabel=r"Score Normalizado $(\tau)$",
-                ylabel=r"Execucões com score > $\tau$",
+                ylabel=r"Fração de runs com score > $\tau$",
                 ax=axes_performance_profile[0],
             )
             plot_utils.plot_performance_profiles(
@@ -850,7 +883,7 @@ if __name__ == "__main__":
                 # xlabel=r"Normalized Score $(\tau)$",
                 xlabel=r"Score Normalizado $(\tau)$",
                 # ylabel=r"Fraction of tasks with score > $\tau$",
-                ylabel=r"Tarefas com score > $\tau$",
+                ylabel=r"Fração de tarefas com score > $\tau$",
                 ax=axes_performance_profile[1],
             )
             h, l = axes_performance_profile[0].get_legend_handles_labels()
@@ -880,7 +913,7 @@ if __name__ == "__main__":
                 aggregate_scores,
                 aggregate_score_cis,
                 # metric_names=["Median", "IQM", "Mean", "Optimality Gap"],
-                metric_names = ["Mediana", "Mediana Interquartil (IQM)", "Média", "GAP de Otimalidade"],
+                metric_names=["Mediana", "IQM", "Média", "Gap de Otimalidade"],
                 algorithms=exp_names,
                 colors=colors,
                 xlabel="",
